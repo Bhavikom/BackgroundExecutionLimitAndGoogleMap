@@ -1,47 +1,64 @@
 package alarmmanager.com.alarmmanageroreosupportdemo;
 
+import android.Manifest;
 import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.os.Messenger;
+import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.annotation.RequiresApi;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.RadioButton;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
+import alarmmanager.com.alarmmanageroreosupportdemo.alarm.AlarmNotificationService;
+import alarmmanager.com.alarmmanageroreosupportdemo.alarm.AlarmReceiver;
+import alarmmanager.com.alarmmanageroreosupportdemo.alarm.AlarmSoundService;
 import alarmmanager.com.alarmmanageroreosupportdemo.data.DBManager;
 import alarmmanager.com.alarmmanageroreosupportdemo.data.Hero;
 import alarmmanager.com.alarmmanageroreosupportdemo.data.ListViewAdapter;
-import alarmmanager.com.alarmmanageroreosupportdemo.data.OffersViewModel;
+import alarmmanager.com.alarmmanageroreosupportdemo.database.DatabaseClient;
+import alarmmanager.com.alarmmanageroreosupportdemo.database.LocationPoint;
+import alarmmanager.com.alarmmanageroreosupportdemo.jobservice.JobScheduleService;
+import alarmmanager.com.alarmmanageroreosupportdemo.location.LocationResultHelper;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements  SharedPreferences.OnSharedPreferenceChangeListener{
 
-    //private OffersViewModel viewModel;
+    /* for location udpate */
+    private static final int REQUEST_PERMISSIONS_REQUEST_CODE = 34;
+    public static final String MESSENGER_INTENT_KEY = "msg-intent-key";
+    private IncomingMessageHandler mHandler;
+
     //Pending intent instance
     private PendingIntent pendingIntent;
-
-    private RadioButton secondsRadioButton, minutesRadioButton, hoursRadioButton;
 
     //Alarm Request Code
     private static final int ALARM_REQUEST_CODE = 133;
 
     Button btnSetAlarmAtSpecificTime, btnSetRepeatingAlarm;
-
     ListViewAdapter adapter;
     ListView listView;
     List<Hero> heroList;
@@ -52,34 +69,23 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        mHandler = new IncomingMessageHandler();
+        requestPermissions();
+
         dbManager = new DBManager(this);
         dbManager.open();
-
-
 
         listView = (ListView) findViewById(R.id.listView);
         heroList = new ArrayList<>();
 
-        new FetchRecords().execute();
-
-        //viewModel = ViewModelProviders.of(this, new OffersViewModel.OffersViewModelFactory(this)).get(OffersViewModel.class);
-        //adapter = new ListViewAdapter(heroList, MainActivity.this);
-        //adding the adapter to listview
-        //listView.setAdapter(adapter);
-
-        secondsRadioButton = (RadioButton) findViewById(R.id.seconds_radio_button);
-        minutesRadioButton = (RadioButton) findViewById(R.id.minutes_radio_button);
-        hoursRadioButton = (RadioButton) findViewById(R.id.hours_radio_button);
+        new FetchRecordsFromDatabase().execute();
 
         /* Retrieve a PendingIntent that will perform a broadcast */
         Intent alarmIntent = new Intent(MainActivity.this, AlarmReceiver.class);
         pendingIntent = PendingIntent.getBroadcast(MainActivity.this, ALARM_REQUEST_CODE, alarmIntent, 0);
 
-        //Find id of Edit Text
-        final EditText editText = (EditText) findViewById(R.id.input_interval_time);
-
         //Set On CLick over start alarm button
-        btnSetAlarmAtSpecificTime = findViewById(R.id.start_at_specific_time);
+        btnSetAlarmAtSpecificTime = findViewById(R.id.btn_specific_alarm);
         btnSetAlarmAtSpecificTime.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -87,21 +93,17 @@ public class MainActivity extends AppCompatActivity {
                 showTimePickerDialogAndSetAlarm();
             }
         });
-        btnSetRepeatingAlarm = findViewById(R.id.start_alarm_button);
+        btnSetRepeatingAlarm = findViewById(R.id.btn_repeating_alarm);
         btnSetRepeatingAlarm.setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.M)
             @Override
             public void onClick(View v) {
-                String getInterval = editText.getText().toString().trim();//get interval from edittext
-                //check interval should not be empty and 0
-                //if (!getInterval.equals("") && !getInterval.equals("0"))
-                    //finally trigger alarm manager
                     startAlarmRepeating();
 
             }
         });
         //set on click over stop alarm button
-        findViewById(R.id.stop_alarm_button).setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.btn_stop_alarm).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 //Stop alarm manager
@@ -109,40 +111,10 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
-    @Override
-    protected void onStart() {
-        super.onStart();
-        Intent serviceIntent = new Intent(this, JobScheduleService.class);
-        startService(serviceIntent);
-    }
-    //get time interval to trigger alarm manager
-    private int getTimeInterval(String getInterval) {
-        int interval = Integer.parseInt(getInterval);//convert string interval into integer
-        //Return interval on basis of radio button selection
-        if (secondsRadioButton.isChecked())
-            return interval;
-        if (minutesRadioButton.isChecked())
-            return interval * 60;//convert minute into seconds
-        if (hoursRadioButton.isChecked()) return interval * 60 * 60;//convert hours into seconds
-
-        //else return 0
-        return 0;
-    }
     //Trigger alarm manager with entered time interval
     @RequiresApi(api = Build.VERSION_CODES.M)
     public void startAlarmRepeating() {
-        // get a Calendar object with current time
-        //Calendar cal = Calendar.getInstance();
-        // add alarmTriggerTime seconds to the calendar object
-        //cal.add(Calendar.SECOND, alarmTriggerTime);
         AlarmManager manager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);//get instance of alarm manager
-        //manager.set(AlarmManager.RTC_WAKEUP, cal.getTimeInMillis(), pendingIntent);//set alarm manager with entered timer by converting into milliseconds
-        /*manager.setInexactRepeating(AlarmManager.RTC, SystemClock.elapsedRealtime() + 10000,
-                10000, pendingIntent);*/
-        //manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, 20000, pendingIntent);
-
-        //Toast.makeText(this, " Alarm Set for " + alarmTriggerTime + " seconds.", Toast.LENGTH_SHORT).show();
-
         int SDK_INT = Build.VERSION.SDK_INT;
         if (SDK_INT < Build.VERSION_CODES.KITKAT){
             manager.set(AlarmManager.RTC_WAKEUP, 60000, pendingIntent);
@@ -157,21 +129,18 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(MainActivity.this,"Alarm will repeating every 1 minute : ",Toast.LENGTH_SHORT).show();
         }
     }
-
     //Stop/Cancel alarm manager
     public void stopAlarmManager() {
-
         AlarmManager manager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
         manager.cancel(pendingIntent);//cancel the alarm manager of the pending intent
         //Stop the Media Player Service to stop sound
-        //stopService(new Intent(MainActivity.this, AlarmSoundService.class));
-
+        stopService(new Intent(MainActivity.this, AlarmSoundService.class));
         //remove the notification from notification tray
-        /*NotificationManager notificationManager = (NotificationManager) this
+        NotificationManager notificationManager = (NotificationManager) this
                 .getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.cancel(AlarmNotificationService.NOTIFICATION_ID);
 
-        Toast.makeText(this, "Alarm Canceled/Stop by User.", Toast.LENGTH_SHORT).show();*/
+        Toast.makeText(this, "Alarm Canceled/Stop by User.", Toast.LENGTH_SHORT).show();
     }
     @RequiresApi(api = Build.VERSION_CODES.M)
     private void setAlarmAtTime(long time,Calendar calendar) {
@@ -231,7 +200,7 @@ public class MainActivity extends AppCompatActivity {
             return null;
         }
     }
-    private class FetchRecords extends AsyncTask<String, String, String> {
+    private class FetchRecordsFromDatabase extends AsyncTask<String, String, String> {
         @Override
         protected String doInBackground(String... strings) {
             //heroList =  viewModel.getLatestData();
@@ -250,5 +219,126 @@ public class MainActivity extends AppCompatActivity {
             super.onPostExecute(s);
         }
     }
+    @Override
+    protected void onStart() {
+        super.onStart();
+        /*Intent serviceIntent = new Intent(this, JobScheduleService.class);
+        startService(serviceIntent);*/
+        PreferenceManager.getDefaultSharedPreferences(this)
+                .registerOnSharedPreferenceChangeListener(this);
+    }
+    @Override
+    protected void onStop() {
+        PreferenceManager.getDefaultSharedPreferences(this)
+                .unregisterOnSharedPreferenceChangeListener(this);
+        super.onStop();
+    }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mHandler = null;
+    }
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
+        if (s.equals(LocationResultHelper.KEY_LOCATION_UPDATES_RESULT)) {
+            //textViewLocation.setText(LocationResultHelper.getSavedLocationResult(this));
+            getLocationFromDatabase();
+        }
+    }
+
+    private void requestPermissions() {
+        boolean shouldProvideRationale =
+                ActivityCompat.shouldShowRequestPermissionRationale(this,
+                        Manifest.permission.ACCESS_FINE_LOCATION);
+
+        // Provide an additional rationale to the user. This would happen if the user denied the
+        // request previously, but didn't check the "Don't ask again" checkbox.
+        if (shouldProvideRationale) {
+            Log.i(" ", "Displaying permission rationale to provide additional context.");
+            // Request permission
+            ActivityCompat.requestPermissions(MainActivity.this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    REQUEST_PERMISSIONS_REQUEST_CODE);
+        } else {
+            Log.i(" ", "Requesting permission");
+            // Request permission. It's possible this can be auto answered if device policy
+            // sets the permission in a given state or the user denied the permission
+            // previously and checked "Never ask again".
+            ActivityCompat.requestPermissions(MainActivity.this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    REQUEST_PERMISSIONS_REQUEST_CODE);
+        }
+    }
+    /**
+     * Callback received when a permissions request has been completed.
+     */
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        Log.i(" ", "onRequestPermissionResult");
+        if (requestCode == REQUEST_PERMISSIONS_REQUEST_CODE) {
+            if (grantResults.length <= 0) {
+                // If user interaction was interrupted, the permission request is cancelled and you
+                // receive empty arrays.
+                Log.i(" ", "User interaction was cancelled.");
+                finish();
+            } else if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // can be schedule in this way also
+                //  Utils.scheduleJob(this, LocationUpdatesService.class);
+                //doing this way to communicate via messenger
+                // Start service and provide it a way to communicate with this class.
+                /*Intent startServiceIntent = new Intent(this, JobScheduleService.class);
+                Messenger messengerIncoming = new Messenger(mHandler);
+                startServiceIntent.putExtra(MESSENGER_INTENT_KEY, messengerIncoming);
+                startService(startServiceIntent);*/
+            } else {
+                // Permission denied.
+                finish();
+            }
+        }
+    }
+
+    class IncomingMessageHandler extends Handler {
+        @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+        @Override
+        public void handleMessage(Message msg) {
+            Log.i(" ", "handleMessage..." + msg.toString());
+
+            super.handleMessage(msg);
+
+            switch (msg.what) {
+                case JobScheduleService.LOCATION_MESSAGE:
+                    /* getting message from job service on location update */
+                    Location obj = (Location) msg.obj;
+                    String currentDateTimeString = DateFormat.getDateTimeInstance().format(new Date());
+                    //locationMsg.setText("LAT :  " + obj.getLatitude() + "\nLNG : " + obj.getLongitude() + "\n\n" + obj.toString() + " \n\n\nLast updated- " + currentDateTimeString);
+                    break;
+            }
+        }
+    }
+    private void getLocationFromDatabase() {
+        class AsynctaskGetLocation extends AsyncTask<Void, Void, List<LocationPoint>> {
+
+            @Override
+            protected List<LocationPoint> doInBackground(Void... voids) {
+                List<LocationPoint> taskList = DatabaseClient
+                        .getInstance(getApplicationContext())
+                        .getAppDatabase()
+                        .locationDao()
+                        .getAll();
+                return taskList;
+            }
+
+            @Override
+            protected void onPostExecute(List<LocationPoint> locationPoints) {
+                super.onPostExecute(locationPoints);
+
+
+                Toast.makeText(MainActivity.this," location point size : "+locationPoints.size(),Toast.LENGTH_SHORT).show();
+            }
+        }
+        AsynctaskGetLocation gt = new AsynctaskGetLocation();
+        gt.execute();
+    }
 }

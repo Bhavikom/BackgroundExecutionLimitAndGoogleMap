@@ -1,8 +1,7 @@
-package alarmmanager.com.alarmmanageroreosupportdemo;
+package alarmmanager.com.alarmmanageroreosupportdemo.alarm;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -20,6 +19,8 @@ import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 
 import org.json.JSONObject;
+
+import alarmmanager.com.alarmmanageroreosupportdemo.R;
 
 /**
  * Created by sonu on 10/04/17.

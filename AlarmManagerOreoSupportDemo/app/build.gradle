@@ -27,13 +27,15 @@ dependencies {
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 
 
-    implementation 'com.android.volley:volley:1.0.0'
+    implementation 'com.android.volley:volley:1.1.0'
     implementation 'com.squareup.okhttp3:okhttp:3.11.0'
 
 
     def room_version = "1.1.1"
     implementation "android.arch.persistence.room:runtime:$room_version"
     annotationProcessor "android.arch.persistence.room:compiler:$room_version"
+
+    implementation 'com.google.android.gms:play-services-location:16.0.0'
 
 
 }

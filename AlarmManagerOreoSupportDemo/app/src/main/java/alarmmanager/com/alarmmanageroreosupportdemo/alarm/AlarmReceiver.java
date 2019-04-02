@@ -1,6 +1,5 @@
-package alarmmanager.com.alarmmanageroreosupportdemo;
+package alarmmanager.com.alarmmanageroreosupportdemo.alarm;
 
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.job.JobInfo;
 import android.app.job.JobScheduler;
@@ -10,12 +9,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.Build;
-import android.os.Messenger;
 import android.support.annotation.RequiresApi;
-import android.support.v4.app.NotificationCompat;
 import android.widget.Toast;
 
-import static android.support.v4.content.WakefulBroadcastReceiver.startWakefulService;
+import alarmmanager.com.alarmmanageroreosupportdemo.jobservice.JobScheduleService;
 
 /**
  * Created by sonu on 09/04/17.
