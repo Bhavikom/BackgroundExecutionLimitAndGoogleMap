@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+xmlns:android="http://schemas.android.com/apk/res/android"
+xmlns:app="http://schemas.android.com/apk/res-auto"
+xmlns:tools="http://schemas.android.com/tools"
+android:layout_width="match_parent"
+android:layout_height="wrap_content"
+android:orientation="vertical">
+
+<Button
+    android:id="@+id/alarm_start_one_time_button"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="One Time Alarm Start Activity"/>
+
+<Button
+    android:id="@+id/alarm_start_repeat_service_button"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="Repeat Alarm Start Service"/>
+
+<Button
+    android:id="@+id/alarm_start_repeat_broadcast_button"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="Repeat Alarm Start Broadcast"/>
+
+<Button
+    android:id="@+id/alarm_cancel_repeat_button"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="Cancel Repeat Alarm"/>
+</LinearLayout>
