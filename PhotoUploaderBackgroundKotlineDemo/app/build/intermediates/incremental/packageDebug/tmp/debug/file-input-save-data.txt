@@ -1,0 +1,7 @@
+#Internal package file, do not edit.
+#Tue Apr 02 18:43:11 IST 2019
+0.baseType=DIRECTORY
+0.base=E\:\\Bhavik\\AndroidProjects\\01 DEMO\\18 Background work\\PhotoUploader_materials\\Android final project\\app\\build\\intermediates\\dex\\debug\\mergeDexDebug\\out
+0.path=classes.dex
+0.set=DEX
+count=1
