@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">LocationTrackerAndroid</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Settings</string>
+    <string name="title_activity_job_service_demo">Job Service Fused Location Provider Client
+    </string>
+    <plurals name="num_locations_reported">
+        <item quantity="zero">No location reported</item>
+        <item quantity="one">One location reported</item>
+        <item quantity="other">%d locations reported</item>
+    </plurals>
+</resources>
