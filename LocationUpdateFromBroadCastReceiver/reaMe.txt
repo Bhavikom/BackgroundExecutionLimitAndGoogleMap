@@ -1,0 +1,3 @@
+=> Update location in Background using FusedLocatoin Api and       BroadcastReceiver
+
+=> Whenever Location is update web api called and insert updated location in api to check that location is updated or not and time frequency of location update
