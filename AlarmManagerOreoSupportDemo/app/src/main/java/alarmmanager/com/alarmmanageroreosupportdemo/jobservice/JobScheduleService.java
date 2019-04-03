@@ -29,7 +29,9 @@ import com.android.volley.toolbox.Volley;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -187,7 +189,9 @@ public class JobScheduleService extends JobService implements LocationUpdatesCom
         locationPoint.setLocation(location.getLatitude()+ " : "+location.getLongitude());
 
         for (int i = 0;i<locations.size();i++) {
-            callVolley(this, String.valueOf(locations.get(i).getLatitude())+ " : "+String.valueOf(locations.get(i).getLongitude()));
+            String currentDateTimeString = DateFormat.getDateTimeInstance().format(new Date());
+
+            callVolley(this, String.valueOf(locations.get(i).getLatitude())+ " : "+String.valueOf(locations.get(i).getLongitude()) + " Time : "+currentDateTimeString);
         }
 
         //adding to database
