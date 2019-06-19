@@ -61,7 +61,6 @@ public class JobScheduleService extends JobService implements LocationUpdatesCom
 
     public JobScheduleService() {
     }
-
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.i(TAG, "onStartCommand Service started");
@@ -95,15 +94,88 @@ public class JobScheduleService extends JobService implements LocationUpdatesCom
         }catch (Exception e){
             Log.e("refresh cpn work", "failed to refresh coupons");
         }
-
-
-        return true;
+        return false;
     }
     @Override
     public boolean onStopJob(JobParameters params) {
         Log.i(TAG, "onStopJob....");
         locationUpdatesComponent.onStop();
         return false;
+    }
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    @Override
+    public void onLocationUpdate(Location location) {
+
+        List<Location> locations = new ArrayList<>();
+        locations.add(location);
+        LocationResultHelper locationResultHelper = new LocationResultHelper(this, locations);
+        locationResultHelper.saveResults();
+        locationResultHelper.showNotification();
+        final LocationPoint locationPoint = new LocationPoint();
+        locationPoint.setLocation(location.getLatitude()+ " : "+location.getLongitude());
+
+        for (int i = 0;i<locations.size();i++) {
+            String currentDateTimeString = DateFormat.getDateTimeInstance().format(new Date());
+
+            callVolley(this, String.valueOf(locations.get(i).getLatitude())+ " : "+String.valueOf(locations.get(i).getLongitude()) + " Time : "+currentDateTimeString);
+        }
+
+        //adding to database
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                DatabaseClient.getInstance(getApplicationContext()).getAppDatabase()
+                        .locationDao()
+                        .insert(locationPoint);
+            }
+        }).start();
+
+
+        Toast.makeText(getApplicationContext()," Location is changed from alarm : "+location.getLatitude()+" : "+location.getLongitude(),Toast.LENGTH_SHORT).show();
+        /* sending message to activity */
+        sendMessage(LOCATION_MESSAGE, location);
+        locationUpdatesComponent.onStop();
+        locationUpdatesComponent = new LocationUpdatesComponent(this);
+        locationUpdatesComponent.onCreate(this);
+
+    }
+    public void callVolley(final Context context, final String location){
+        try {
+            RequestQueue requestQueue = Volley.newRequestQueue(context);
+            String URL = "http://api.yasoka.com";
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("gps", location);
+            final String requestBody = jsonBody.toString();
+
+
+            StringRequest strreq = new StringRequest(Request.Method.POST,
+                    URL,
+                    new Response.Listener<String>() {
+                        @Override
+                        public void onResponse(String Response) {
+                            // get response
+                            Toast.makeText(context.getApplicationContext()," location added in database : ",Toast.LENGTH_SHORT).show();
+                            //jobService.jobFinished(jobParameters, false);
+                        }
+                    }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError e) {
+                    e.printStackTrace();
+                    // Toast.makeText(context.getApplicationContext()," location added in database : ",Toast.LENGTH_SHORT).show();
+                }
+            }){@Override
+            public Map<String, String> getParams(){
+                Map<String, String> params = new HashMap<>();
+                params.put("gps", location);
+                return params;
+            }
+            };
+
+
+            requestQueue.add(strreq);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
     private void sendNotification(String msg) {
         Intent resultIntent = new Intent(this, MainActivity.class);
@@ -173,78 +245,6 @@ public class JobScheduleService extends JobService implements LocationUpdatesCom
             mActivityMessenger.send(m);
         } catch (RemoteException e) {
             Log.e(TAG, "Error passing service object back to activity.");
-        }
-    }
-
-    @RequiresApi(api = Build.VERSION_CODES.O)
-    @Override
-    public void onLocationUpdate(Location location) {
-
-        List<Location> locations = new ArrayList<>();
-        locations.add(location);
-        LocationResultHelper locationResultHelper = new LocationResultHelper(this, locations);
-        locationResultHelper.saveResults();
-
-        final LocationPoint locationPoint = new LocationPoint();
-        locationPoint.setLocation(location.getLatitude()+ " : "+location.getLongitude());
-
-        for (int i = 0;i<locations.size();i++) {
-            String currentDateTimeString = DateFormat.getDateTimeInstance().format(new Date());
-
-            callVolley(this, String.valueOf(locations.get(i).getLatitude())+ " : "+String.valueOf(locations.get(i).getLongitude()) + " Time : "+currentDateTimeString);
-        }
-
-        //adding to database
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                DatabaseClient.getInstance(getApplicationContext()).getAppDatabase()
-                        .locationDao()
-                        .insert(locationPoint);
-            }
-        }).start();
-
-
-        Toast.makeText(getApplicationContext()," Location is changed : "+location.getLatitude()+" : "+location.getLongitude(),Toast.LENGTH_SHORT).show();
-        /* sending message to activity */
-        sendMessage(LOCATION_MESSAGE, location);
-    }
-
-    public void callVolley(final Context context, final String location){
-        try {
-            RequestQueue requestQueue = Volley.newRequestQueue(context);
-            String URL = "http://api.yasoka.com";
-            JSONObject jsonBody = new JSONObject();
-            jsonBody.put("gps", location);
-            final String requestBody = jsonBody.toString();
-
-
-            StringRequest strreq = new StringRequest(Request.Method.POST,
-                    URL,
-                    new Response.Listener<String>() {
-                        @Override
-                        public void onResponse(String Response) {
-                            // get response
-                            Toast.makeText(context.getApplicationContext()," location added in database : ",Toast.LENGTH_SHORT).show();
-                        }
-                    }, new Response.ErrorListener() {
-                @Override
-                public void onErrorResponse(VolleyError e) {
-                    e.printStackTrace();
-                    Toast.makeText(context.getApplicationContext()," location added in database : ",Toast.LENGTH_SHORT).show();
-                }
-            }){@Override
-            public Map<String, String> getParams(){
-                Map<String, String> params = new HashMap<>();
-                params.put("gps", location);
-                return params;
-            }
-            };
-
-
-            requestQueue.add(strreq);
-        } catch (JSONException e) {
-            e.printStackTrace();
         }
     }
 }

@@ -19,7 +19,10 @@ package alarmmanager.com.alarmmanageroreosupportdemo.location;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.TaskStackBuilder;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Build;
@@ -30,6 +33,7 @@ import java.text.DateFormat;
 import java.util.Date;
 import java.util.List;
 
+import alarmmanager.com.alarmmanageroreosupportdemo.MainActivity;
 import alarmmanager.com.alarmmanageroreosupportdemo.R;
 
 /**
@@ -120,8 +124,8 @@ public class LocationResultHelper {
     /**
      * Displays a notification with the location results.
      */
-    /*@RequiresApi(api = Build.VERSION_CODES.O)
-    void showNotification() {
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public void showNotification() {
         Intent notificationIntent = new Intent(mContext, MainActivity.class);
 
         // Construct a task stack.
@@ -141,10 +145,10 @@ public class LocationResultHelper {
                 PRIMARY_CHANNEL)
                 .setContentTitle(getLocationResultTitle())
                 .setContentText(getLocationResultText())
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.location)
                 .setAutoCancel(true)
                 .setContentIntent(notificationPendingIntent);
 
-        getNotificationManager().notify(0, notificationBuilder.build());
-    }*/
+        getNotificationManager().notify((int) System.currentTimeMillis(), notificationBuilder.build());
+    }
 }

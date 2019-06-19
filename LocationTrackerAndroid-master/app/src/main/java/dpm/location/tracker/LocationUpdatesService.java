@@ -2,6 +2,7 @@ package dpm.location.tracker;
 
 import android.app.job.JobParameters;
 import android.app.job.JobService;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.location.Location;
@@ -13,8 +14,22 @@ import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.text.DateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import dpm.location.database.DatabaseClient;
 import dpm.location.database.LocationPoint;
@@ -149,11 +164,11 @@ public class LocationUpdatesService extends JobService implements LocationUpdate
         locations.add(location);
         LocationResultHelper locationResultHelper = new LocationResultHelper(this, locations);
         locationResultHelper.saveResults();
-
+        locationResultHelper.showNotification();
         final LocationPoint locationPoint = new LocationPoint();
         locationPoint.setLocation(location.getLatitude()+ " : "+location.getLongitude());
 
-        //adding to database
+        //adding to local database
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -164,7 +179,52 @@ public class LocationUpdatesService extends JobService implements LocationUpdate
         }).start();
 
 
-        Toast.makeText(getApplicationContext()," Location is changed : "+location.getLatitude()+" : "+location.getLongitude(),Toast.LENGTH_SHORT).show();
+        /* adding to server database using web api*/
+        for (int i = 0;i<locations.size();i++) {
+            String currentDateTimeString = DateFormat.getDateTimeInstance().format(new Date());
+
+            callVolley(this, String.valueOf(locations.get(i).getLatitude())+ " : "+String.valueOf(locations.get(i).getLongitude()) + " Time : "+currentDateTimeString);
+        }
+
+        Toast.makeText(getApplicationContext()," Location is changed and stored in both database : "+location.getLatitude()+" : "+location.getLongitude(),Toast.LENGTH_SHORT).show();
         sendMessage(LOCATION_MESSAGE, location);
     }
+    public void callVolley(final Context context, final String location){
+        try {
+            RequestQueue requestQueue = Volley.newRequestQueue(context);
+            String URL = "http://api.yasoka.com";
+            JSONObject jsonBody = new JSONObject();
+            jsonBody.put("gps", location);
+            final String requestBody = jsonBody.toString();
+
+
+            StringRequest strreq = new StringRequest(Request.Method.POST,
+                    URL,
+                    new com.android.volley.Response.Listener<String>() {
+                        @Override
+                        public void onResponse(String Response) {
+                            // get response
+                            Toast.makeText(context.getApplicationContext()," location added in database : ",Toast.LENGTH_SHORT).show();
+                        }
+                    }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError e) {
+                    e.printStackTrace();
+                    Toast.makeText(context.getApplicationContext()," location added in database : ",Toast.LENGTH_SHORT).show();
+                }
+            }){@Override
+            public Map<String, String> getParams(){
+                Map<String, String> params = new HashMap<>();
+                params.put("gps", location);
+                return params;
+            }
+            };
+
+
+            requestQueue.add(strreq);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
 }

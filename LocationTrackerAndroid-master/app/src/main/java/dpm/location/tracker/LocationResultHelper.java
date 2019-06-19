@@ -121,16 +121,13 @@ class LocationResultHelper {
     /**
      * Displays a notification with the location results.
      */
-    /*@RequiresApi(api = Build.VERSION_CODES.O)
+    @RequiresApi(api = Build.VERSION_CODES.O)
     void showNotification() {
-        Intent notificationIntent = new Intent(mContext, MainActivity.class);
-
+        Intent notificationIntent = new Intent(mContext, JobServiceDemoActivity.class);
         // Construct a task stack.
         TaskStackBuilder stackBuilder = TaskStackBuilder.create(mContext);
-
         // Add the main Activity to the task stack as the parent.
-        stackBuilder.addParentStack(MainActivity.class);
-
+        stackBuilder.addParentStack(JobServiceDemoActivity.class);
         // Push the content Intent onto the stack.
         stackBuilder.addNextIntent(notificationIntent);
 
@@ -142,10 +139,10 @@ class LocationResultHelper {
                 PRIMARY_CHANNEL)
                 .setContentTitle(getLocationResultTitle())
                 .setContentText(getLocationResultText())
-                .setSmallIcon(R.mipmap.ic_launcher)
+                .setSmallIcon(R.drawable.location)
                 .setAutoCancel(true)
                 .setContentIntent(notificationPendingIntent);
 
-        getNotificationManager().notify(0, notificationBuilder.build());
-    }*/
+        getNotificationManager().notify((int) System.currentTimeMillis(), notificationBuilder.build());
+    }
 }
